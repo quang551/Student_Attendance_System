@@ -1,72 +1,75 @@
 from repositories.db import get_connection
-from models.user import User
+from models.user import Admin, Lecturer, Student, User
 
 
 class UserRepo:
+    ROLE_TABLE = {
+        "admin": ("admin", "admin_id", "A"),
+        "lecturer": ("lecturer", "lecturer_id", "L"),
+        "student": ("student", "student_id", "S"),
+    }
+
     def create(self, user, role_id=None):
         conn = get_connection()
         cursor = conn.cursor()
-
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO users (user_id, user_name, full_name, password, email, role)
             VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            user.user_id,
-            user.username,
-            user.full_name,
-            user.password,
-            user.email,
-            user.role,
-        ))
-
+            """,
+            (user.user_id, user.username, user.full_name, user.password, user.email, user.role),
+        )
         self._upsert_role_table(cursor, user.user_id, user.role, role_id)
         conn.commit()
         conn.close()
-        return user
+        return self.get_by_id(user.user_id)
 
     def get_by_username(self, username):
         conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute("""
+        row = conn.execute(
+            """
             SELECT user_id, user_name, full_name, email, role, password
             FROM users
             WHERE user_name = ?
-        """, (username,))
-        row = cursor.fetchone()
+            """,
+            (username,),
+        ).fetchone()
         conn.close()
         return self._to_user(row)
 
     def get_by_id(self, user_id):
         conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute("""
+        row = conn.execute(
+            """
             SELECT user_id, user_name, full_name, email, role, password
             FROM users
             WHERE user_id = ?
-        """, (user_id,))
-        row = cursor.fetchone()
+            """,
+            (user_id,),
+        ).fetchone()
         conn.close()
         return self._to_user(row)
 
     def list_all(self, role=None):
         conn = get_connection()
-        cursor = conn.cursor()
-
         if role:
-            cursor.execute("""
+            rows = conn.execute(
+                """
                 SELECT user_id, user_name, full_name, email, role, password
                 FROM users
                 WHERE role = ?
                 ORDER BY user_name
-            """, (role,))
+                """,
+                (role,),
+            ).fetchall()
         else:
-            cursor.execute("""
+            rows = conn.execute(
+                """
                 SELECT user_id, user_name, full_name, email, role, password
                 FROM users
                 ORDER BY user_name
-            """)
-
-        rows = cursor.fetchall()
+                """
+            ).fetchall()
         conn.close()
         return [self._to_user(row) for row in rows]
 
@@ -80,23 +83,19 @@ class UserRepo:
         next_email = fields.get("email", current.email)
         next_password = fields.get("password", current.password)
         next_role = fields.get("role", current.role)
+        next_role_id = fields.get("role_id")
 
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             UPDATE users
             SET user_name = ?, full_name = ?, password = ?, email = ?, role = ?
             WHERE user_id = ?
-        """, (
-            next_username,
-            next_full_name,
-            next_password,
-            next_email,
-            next_role,
-            user_id,
-        ))
-
-        self._upsert_role_table(cursor, user_id, next_role)
+            """,
+            (next_username, next_full_name, next_password, next_email, next_role, user_id),
+        )
+        self._upsert_role_table(cursor, user_id, next_role, next_role_id)
         conn.commit()
         conn.close()
         return self.get_by_id(user_id)
@@ -104,9 +103,6 @@ class UserRepo:
     def delete(self, user_id):
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM admin WHERE user_id = ?", (user_id,))
-        cursor.execute("DELETE FROM lecturer WHERE user_id = ?", (user_id,))
-        cursor.execute("DELETE FROM student WHERE user_id = ?", (user_id,))
         cursor.execute("DELETE FROM users WHERE user_id = ?", (user_id,))
         deleted = cursor.rowcount > 0
         conn.commit()
@@ -115,61 +111,58 @@ class UserRepo:
 
     def authenticate(self, username, password_hash):
         conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute("""
+        row = conn.execute(
+            """
             SELECT user_id, user_name, full_name, email, role, password
             FROM users
             WHERE user_name = ? AND password = ?
-        """, (username, password_hash))
-        row = cursor.fetchone()
+            """,
+            (username, password_hash),
+        ).fetchone()
         conn.close()
         return self._to_user(row)
 
-    def ensure_role_user(self, role_id, username, full_name, role, password_hash):
-        existing = self.get_role_user(role, role_id)
-        if existing:
-            return existing
-
-        user = User(
-            user_id=f"U_{role_id}",
-            username=username,
-            full_name=full_name,
-            email=f"{username}@example.com",
-            role=role,
-            password=password_hash,
-        )
-        self.create(user, role_id=role_id)
-        return user
-
     def get_role_user(self, role, role_id):
-        table = {"admin": "admin", "lecturer": "lecturer", "student": "student"}[role]
-        pk = {"admin": "admin_id", "lecturer": "lecturer_id", "student": "student_id"}[role]
-
+        table, pk, _ = self.ROLE_TABLE[role]
         conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute(f"""
+        row = conn.execute(
+            f"""
             SELECT u.user_id, u.user_name, u.full_name, u.email, u.role, u.password
             FROM {table} r
             JOIN users u ON u.user_id = r.user_id
             WHERE r.{pk} = ?
-        """, (role_id,))
-        row = cursor.fetchone()
+            """,
+            (role_id,),
+        ).fetchone()
         conn.close()
-        return self._to_user(row)
+        return self._to_user(row, role_id)
 
-    def _to_user(self, row):
+    def _to_user(self, row, role_id=None):
         if not row:
             return None
-        return User(
-            user_id=row[0],
-            username=row[1],
-            full_name=row[2],
-            email=row[3],
-            role=row[4],
-            password=row[5],
-        )
+
+        role = row["role"]
+        kwargs = {
+            "user_id": row["user_id"],
+            "username": row["user_name"],
+            "full_name": row["full_name"],
+            "email": row["email"],
+            "role": role,
+            "password": row["password"],
+        }
+        if role == "admin":
+            return Admin(admin_id=role_id or f"A_{row['user_id']}", **kwargs)
+        if role == "lecturer":
+            return Lecturer(lecturer_id=role_id or f"L_{row['user_id']}", **kwargs)
+        if role == "student":
+            return Student(student_id=role_id or f"S_{row['user_id']}", **kwargs)
+        return User(**kwargs)
 
     def _upsert_role_table(self, cursor, user_id, role, role_id=None):
         cursor.execute("DELETE FROM admin WHERE user_id = ?", (user_id,))
         cursor.execute("DELETE FROM lecturer WHERE user_id = ?", (user_id,))
-        cursor
+        cursor.execute("DELETE FROM student WHERE user_id = ?", (user_id,))
+
+        table, pk, prefix = self.ROLE_TABLE[role]
+        resolved_role_id = role_id or f"{prefix}{user_id}"
+        cursor.execute(f"INSERT INTO {table} ({pk}, user_id) VALUES (?, ?)", (resolved_role_id, user_id))

@@ -1,59 +1,77 @@
-from services.attendance_service import *
+def _print_result(success, message):
+    prefix = "✔" if success else "❌"
+    print(f"{prefix} {message}")
 
 
-def attendance_menu():
+def attendance_menu(attendance_service, user=None, role=None):
+    if role == "student":
+        _student_attendance_menu(attendance_service, user)
+        return
+
     while True:
         print("\n===== ATTENDANCE MENU =====")
-        print("1. Tạo session")
-        print("2. Mở session")
-        print("3. Đóng session")
-        print("4. Điểm danh")
-        print("5. Xem điểm danh theo session")
-        print("6. Xem điểm danh theo student")
-        print("0. Thoát")
+        print("1. Mở session")
+        print("2. Đóng session")
+        print("3. Điểm danh")
+        print("4. Xem điểm danh theo session")
+        print("5. Xem điểm danh theo student")
+        print("0. Quay lại")
 
-        choice = input("Chọn: ")
+        choice = input("Chọn: ").strip()
 
         if choice == "1":
-            session_id = input("Session ID: ")
-            class_id = input("Class ID: ")
-            start = input("Start time: ")
-            end = input("End time: ")
-            create_session(session_id, class_id, start, end)
-            print("✔ Tạo session thành công")
+            session_id = input("Session ID: ").strip()
+            _print_result(*attendance_service.open_session(session_id))
 
         elif choice == "2":
-            session_id = input("Session ID: ")
-            open_session(session_id)
-            print("✔ Session đã mở")
+            session_id = input("Session ID: ").strip()
+            _print_result(*attendance_service.close_session(session_id))
 
         elif choice == "3":
-            session_id = input("Session ID: ")
-            close_session(session_id)
-            print("✔ Session đã đóng")
+            attendance_id = input("Attendance ID: ").strip()
+            session_id = input("Session ID: ").strip()
+            student_id = input("Student ID: ").strip()
+            print("1. Present | 2. Absent | 3. Late")
+            status = input("Status: ").strip()
+            if not status.isdigit():
+                print("❌ Status không hợp lệ")
+                continue
+            _print_result(*attendance_service.mark_attendance(attendance_id, session_id, student_id, int(status)))
 
         elif choice == "4":
-            attendance_id = input("Attendance ID: ")
-            session_id = input("Session ID: ")
-            student_id = input("Student ID: ")
-
-            print("1. Present | 2. Absent | 3. Late")
-            status = int(input("Status: "))
-            mark_attendance(attendance_id, session_id, student_id, status)
-
-        elif choice == "5":
-            session_id = input("Session ID: ")
-            data = view_attendance_by_session(session_id)
-
+            session_id = input("Session ID: ").strip()
+            data = attendance_service.view_attendance_by_session(session_id)
+            if not data:
+                print("Không có dữ liệu điểm danh.")
             for row in data:
                 print(row)
 
-        elif choice == "6":
-            student_id = input("Student ID: ")
-            data = view_attendance_by_student(student_id)
-
+        elif choice == "5":
+            student_id = input("Student ID: ").strip()
+            data = attendance_service.view_attendance_by_student(student_id)
+            if not data:
+                print("Không có dữ liệu điểm danh.")
             for attendance in data:
                 print(attendance)
 
         elif choice == "0":
             break
+
+        else:
+            print("Lựa chọn không hợp lệ.")
+
+
+def _student_attendance_menu(attendance_service, user):
+    student_id = getattr(user, "student_id", None)
+    if not student_id:
+        print("❌ Không xác định được student_id.")
+        return
+
+    print("\n===== MY ATTENDANCE =====")
+    data = attendance_service.view_attendance_by_student(student_id)
+    if not data:
+        print("Không có dữ liệu điểm danh.")
+        return
+
+    for attendance in data:
+        print(attendance)

@@ -1,10 +1,32 @@
+from dataclasses import dataclass
+from enum import IntEnum
+
+
+class AttendanceStatus(IntEnum):
+    PRESENT = 1
+    ABSENT = 2
+    LATE = 3
+
+
+@dataclass(slots=True)
 class Attendance:
-    def __init__(self, attendance_id, session_id, student_id, status, recorded_at):
-        self.attendance_id = attendance_id
-        self.session_id = session_id
-        self.student_id = student_id
-        self.status = status
-        self.recorded_at = recorded_at
+    attendance_id: str
+    session_id: str
+    student_id: str
+    status: int
+    recorded_at: str
+
+    def mark_present(self):
+        self.status = AttendanceStatus.PRESENT
+
+    def mark_absent(self):
+        self.status = AttendanceStatus.ABSENT
+
+    def mark_late(self):
+        self.status = AttendanceStatus.LATE
 
     def __str__(self):
-        return f"[{self.attendance_id}] Student: {self.student_id} | Session: {self.session_id} | Status: {self.status} | Time: {self.recorded_at}"
+        return (
+            f"[{self.attendance_id}] Student: {self.student_id} | Session: {self.session_id} "
+            f"| Status: {self.status} | Time: {self.recorded_at}"
+        )

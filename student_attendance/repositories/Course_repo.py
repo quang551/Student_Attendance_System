@@ -1,61 +1,74 @@
-class CourseRepo:
-    def __init__(self):
-        self.courses = []
+from models.course import Course
+from repositories.db import get_connection
 
+
+class CourseRepo:
     def add(self, course):
-        if self.find_by_id(course.course_id):
-            print("Course đã tồn tại!")
-            return False
-        self.courses.append(course)
-        return True
+        conn = get_connection()
+        conn.execute(
+            """
+            INSERT INTO course (course_id, course_name, description)
+            VALUES (?, ?, ?)
+            """,
+            (course.course_id, course.name, course.description),
+        )
+        conn.commit()
+        conn.close()
+        return course
 
     def get_all(self):
-        return self.courses
+        conn = get_connection()
+        rows = conn.execute(
+            """
+            SELECT course_id, course_name, description
+            FROM course
+            ORDER BY course_id
+            """
+        ).fetchall()
+        conn.close()
+        return [self._to_course(row) for row in rows]
 
     def find_by_id(self, course_id):
-        for c in self.courses:
-            if c.course_id == course_id:
-                return c
-        return None
+        conn = get_connection()
+        row = conn.execute(
+            """
+            SELECT course_id, course_name, description
+            FROM course
+            WHERE course_id = ?
+            """,
+            (course_id,),
+        ).fetchone()
+        conn.close()
+        return self._to_course(row)
 
     def delete(self, course_id):
-        course = self.find_by_id(course_id)
-        if course:
-            self.courses.remove(course)
-            return True
-        return False
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM course WHERE course_id = ?", (course_id,))
+        deleted = cursor.rowcount > 0
+        conn.commit()
+        conn.close()
+        return deleted
 
     def update(self, course_id, new_name=None, new_description=None):
-        course = self.find_by_id(course_id)
-        if course:
-            if new_name is not None:
-                course.name = new_name
-            if new_description is not None:
-                course.description = new_description
-            return True
-        return False
+        current = self.find_by_id(course_id)
+        if not current:
+            return False
 
-class SessionRepo:
-    def __init__(self):
-        self.sessions = []
+        conn = get_connection()
+        conn.execute(
+            """
+            UPDATE course
+            SET course_name = ?, description = ?
+            WHERE course_id = ?
+            """,
+            (new_name if new_name is not None else current.name, new_description if new_description is not None else current.description, course_id),
+        )
+        conn.commit()
+        conn.close()
+        return True
 
-    def add(self, session):
-        self.sessions.append(session)
-
-    def get_all(self):
-        return self.sessions
-
-    def find_by_id(self, session_id):
-        for s in self.sessions:
-            if s.session_id == session_id:
-                return s
-        return None
-
-    def delete(self, session_id):
-        self.sessions = [s for s in self.sessions if s.session_id != session_id]
-
-    def update(self, session_id, new_date=None):
-        session = self.find_by_id(session_id)
-        if session:
-            if new_date:
-                session.date = new_date
+    def _to_course(self, row):
+        if not row:
+            return None
+        return Course(row["course_id"], row["course_name"], row["description"])

@@ -1,10 +1,13 @@
-class Session:
-    def __init__(self, session_id, class_id, day, start_time, end_time):
-        self.session_id = session_id
-        self.class_id = class_id
-        self.day = day
-        self.start_time = start_time
-        self.end_time = end_time
+from dataclasses import dataclass
+
+
+@dataclass(slots=True)
+class Class:
+    class_id: str
+    class_name: str
+    course_id: str
+    lecturer_id: str | None = None
 
     def __str__(self):
-        return f"{self.session_id} | {self.class_id} | {self.day} | {self.start_time}-{self.end_time}"
+        lecturer = self.lecturer_id or "-"
+        return f"{self.class_id} | {self.class_name} | course={self.course_id} | lecturer={lecturer}"

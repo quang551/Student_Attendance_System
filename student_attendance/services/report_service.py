@@ -1,39 +1,44 @@
+from repositories.db import get_connection
+
+
 class ReportService:
-    def __init__(self):
-        # dữ liệu giả
-        self.data = [
-            {"student_id": "S1", "class_id": "C1", "status": "present"},
-            {"student_id": "S1", "class_id": "C1", "status": "absent"},
-            {"student_id": "S2", "class_id": "C1", "status": "present"},
-            {"student_id": "S2", "class_id": "C1", "status": "present"},
-        ]
-
     def report_by_class(self, class_id):
-        records = [r for r in self.data if r["class_id"] == class_id]
-
-        total = len(records)
-        present = sum(1 for r in records if r["status"] == "present")
-        absent = total - present
-        rate = (present / total * 100) if total else 0
-
-        return {
-            "total": total,
-            "present": present,
-            "absent": absent,
-            "rate": round(rate, 2)
-        }
+        conn = get_connection()
+        rows = conn.execute(
+            """
+            SELECT a.status
+            FROM attendance a
+            JOIN session s ON s.session_id = a.session_id
+            WHERE s.class_id = ?
+            """,
+            (class_id,),
+        ).fetchall()
+        conn.close()
+        return self._build_report(rows)
 
     def report_by_student(self, student_id):
-        records = [r for r in self.data if r["student_id"] == student_id]
+        conn = get_connection()
+        rows = conn.execute(
+            """
+            SELECT status
+            FROM attendance
+            WHERE student_id = ?
+            """,
+            (student_id,),
+        ).fetchall()
+        conn.close()
+        return self._build_report(rows)
 
-        total = len(records)
-        present = sum(1 for r in records if r["status"] == "present")
-        absent = total - present
+    def _build_report(self, rows):
+        total = len(rows)
+        present = sum(1 for row in rows if row["status"] == 1)
+        absent = sum(1 for row in rows if row["status"] == 2)
+        late = sum(1 for row in rows if row["status"] == 3)
         rate = (present / total * 100) if total else 0
-
         return {
             "total": total,
             "present": present,
             "absent": absent,
-            "rate": round(rate, 2)
+            "late": late,
+            "rate": round(rate, 2),
         }

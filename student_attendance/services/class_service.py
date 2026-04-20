@@ -1,67 +1,77 @@
 from models.class_model import Class
+from repositories.class_repo import ClassRepo
+from repositories.user_repo import UserRepo
+
 
 class ClassService:
-    def __init__(self, class_repo, course_repo):
-        self.class_repo = class_repo
+    def __init__(self, class_repo=None, course_repo=None, user_repo=None):
+        self.class_repo = class_repo or ClassRepo()
         self.course_repo = course_repo
+        self.user_repo = user_repo or UserRepo()
 
-    # 🏫 Tạo lớp
-    def create_class(self, class_id, course_id):
+    def create_class(self, class_id, course_id, class_name=None):
         if self.class_repo.find_by_id(class_id):
-            print("Class already exists!")
-            return
+            return False, "Class already exists!", None
+        if self.course_repo and not self.course_repo.find_by_id(course_id):
+            return False, "Course not found!", None
 
-        # ✅ check course tồn tại
-        if not self.course_repo.find_by_id(course_id):
-            print("Course not found!")
-            return
+        new_class = Class(class_id, class_name or class_id, course_id)
+        return True, "Class created successfully!", self.class_repo.add(new_class)
 
-        new_class = Class(class_id, course_id)
-        self.class_repo.add(new_class)
-
-    # ❌ Xóa lớp
     def delete_class(self, class_id):
         if not self.class_repo.find_by_id(class_id):
-            print("Class not found!")
-            return
+            return False, "Class not found!"
         self.class_repo.delete(class_id)
+        return True, "Class deleted!"
 
-    # ✏️ Sửa lớp
-    def update_class(self, class_id, course_id):
-        c = self.class_repo.find_by_id(class_id)
-        if not c:
-            print("Class not found!")
-            return
+    def update_class(self, class_id, course_id=None, class_name=None):
+        current = self.class_repo.find_by_id(class_id)
+        if not current:
+            return False, "Class not found!", None
+        if course_id and self.course_repo and not self.course_repo.find_by_id(course_id):
+            return False, "Course not found!", None
 
-        if not self.course_repo.find_by_id(course_id):
-            print("Course not found!")
-            return
+        self.class_repo.update(class_id, new_course_id=course_id, new_class_name=class_name)
+        return True, "Class updated!", self.class_repo.find_by_id(class_id)
 
-        self.class_repo.update(class_id, course_id)
+    def list_classes(self):
+        return self.class_repo.get_all()
 
- 
-    # 👨‍🎓 Thêm sinh viên
-    def add_student(self, class_id, student):
-        c = self.class_repo.find_by_id(class_id)
-        if not c:
-            print("Class not found!")
-            return
+    def list_classes_for_lecturer(self, lecturer_id):
+        return self.class_repo.list_by_lecturer(lecturer_id)
 
-        if student in c.students:
-            print("Student already in class!")
-            return
+    def list_classes_for_student(self, student_id):
+        return self.class_repo.list_by_student(student_id)
 
-        c.students.append(student)
+    def list_students(self, class_id):
+        current = self.class_repo.find_by_id(class_id)
+        if not current:
+            return False, "Class not found!", []
+        return True, "OK", self.class_repo.list_students(class_id)
 
-    # 👨‍🏫 Gán giảng viên
-    def assign_lecturer(self, class_id, lecturer):
-        c = self.class_repo.find_by_id(class_id)
-        if not c:
-            print("Class not found!")
-            return
+    def add_student(self, class_id, student_id, student_name=None):
+        current = self.class_repo.find_by_id(class_id)
+        if not current:
+            return False, "Class not found!"
 
-        if c.lecturer:
-            print("Class already has a lecturer!")
-            return
+        student = self.user_repo.get_role_user("student", student_id)
+        if not student:
+            return False, "Student not found!"
+        if self.class_repo.is_student_enrolled(class_id, student_id):
+            return False, "Student already in class!"
 
-        c.lecturer = lecturer
+        class_student_id = f"CS_{class_id}_{student_id}"
+        self.class_repo.enroll_student(class_id, student_id, class_student_id)
+        return True, "Student enrolled successfully!"
+
+    def assign_lecturer(self, class_id, lecturer_id, lecturer_name=None):
+        current = self.class_repo.find_by_id(class_id)
+        if not current:
+            return False, "Class not found!"
+
+        lecturer = self.user_repo.get_role_user("lecturer", lecturer_id)
+        if not lecturer:
+            return False, "Lecturer not found!"
+
+        self.class_repo.update(class_id, lecturer_id=lecturer_id)
+        return True, "Lecturer assigned successfully!"
