@@ -12,16 +12,29 @@ class UserRepo:
     def create(self, user, role_id=None):
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute(
-            """
-            INSERT INTO users (user_id, user_name, full_name, password, email, role)
-            VALUES (?, ?, ?, ?, ?, ?)
-            """,
-            (user.user_id, user.username, user.full_name, user.password, user.email, user.role),
-        )
-        self._upsert_role_table(cursor, user.user_id, user.role, role_id)
-        conn.commit()
-        conn.close()
+        try:
+            cursor.execute(
+                """
+                INSERT INTO users (user_id, user_name, full_name, password, email, role)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    user.user_id,
+                    user.username,
+                    user.full_name,
+                    user.password,
+                    user.email,
+                    user.role,
+                ),
+            )
+            self._upsert_role_table(cursor, user.user_id, user.role, role_id)
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
         return self.get_by_id(user.user_id)
 
     def get_by_username(self, username):
@@ -87,27 +100,85 @@ class UserRepo:
 
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute(
-            """
-            UPDATE users
-            SET user_name = ?, full_name = ?, password = ?, email = ?, role = ?
-            WHERE user_id = ?
-            """,
-            (next_username, next_full_name, next_password, next_email, next_role, user_id),
-        )
-        self._upsert_role_table(cursor, user_id, next_role, next_role_id)
-        conn.commit()
-        conn.close()
+        try:
+            cursor.execute(
+                """
+                UPDATE users
+                SET user_name = ?, full_name = ?, password = ?, email = ?, role = ?
+                WHERE user_id = ?
+                """,
+                (
+                    next_username,
+                    next_full_name,
+                    next_password,
+                    next_email,
+                    next_role,
+                    user_id,
+                ),
+            )
+            self._upsert_role_table(cursor, user_id, next_role, next_role_id)
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
         return self.get_by_id(user_id)
 
     def delete(self, user_id):
+        current = self.get_by_id(user_id)
+        if not current:
+            return False
+
+        role = current.role
+        role_id = None
+        if role in self.ROLE_TABLE:
+            role_id = self._get_role_id_by_user_id(role, user_id)
+
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM users WHERE user_id = ?", (user_id,))
-        deleted = cursor.rowcount > 0
-        conn.commit()
-        conn.close()
-        return deleted
+
+        try:
+            if role == "lecturer" and role_id:
+                cursor.execute(
+                    """
+                    UPDATE class
+                    SET lecturer_id = NULL
+                    WHERE lecturer_id = ?
+                    """,
+                    (role_id,),
+                )
+
+            elif role == "student" and role_id:
+                cursor.execute(
+                    """
+                    DELETE FROM attendance
+                    WHERE student_id = ?
+                    """,
+                    (role_id,),
+                )
+                cursor.execute(
+                    """
+                    DELETE FROM class_student
+                    WHERE student_id = ?
+                    """,
+                    (role_id,),
+                )
+
+            cursor.execute("DELETE FROM admin WHERE user_id = ?", (user_id,))
+            cursor.execute("DELETE FROM lecturer WHERE user_id = ?", (user_id,))
+            cursor.execute("DELETE FROM student WHERE user_id = ?", (user_id,))
+            cursor.execute("DELETE FROM users WHERE user_id = ?", (user_id,))
+
+            deleted = cursor.rowcount > 0
+            conn.commit()
+            return deleted
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
 
     def authenticate(self, username, password_hash):
         conn = get_connection()
@@ -178,4 +249,7 @@ class UserRepo:
 
         table, pk, prefix = self.ROLE_TABLE[role]
         resolved_role_id = role_id or f"{prefix}{user_id}"
-        cursor.execute(f"INSERT INTO {table} ({pk}, user_id) VALUES (?, ?)", (resolved_role_id, user_id))
+        cursor.execute(
+            f"INSERT INTO {table} ({pk}, user_id) VALUES (?, ?)",
+            (resolved_role_id, user_id),
+        )
