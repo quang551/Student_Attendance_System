@@ -1,17 +1,6 @@
-"""
-cli/menu.py – Role-based CLI navigation
-
-Valid roles (users.role):
-  admin=1 | lecturer=2 | student=3
-
-
-"""
-
 
 import hashlib
 import getpass
-
-
 
 # UI Helpers
 
@@ -36,18 +25,13 @@ def _opts(options: list[tuple[str, str]]):
     print()
 
 
-
 # Security – Password Hashing
-
 
 def hash_password(password: str) -> str:
     """Hash password using SHA-256"""
     return hashlib.sha256(password.encode("utf-8")).hexdigest()
 
-
-
 # Authentication
-
 
 def _do_login() -> dict | None:
     _header("LOGIN – Student Attendance System")
@@ -55,7 +39,7 @@ def _do_login() -> dict | None:
     username = _inp("Username: ")
     password = getpass.getpass("  Password: ")
 
-    # ===== MOCK DATA (remove when auth module is ready) =====
+    # MOCK DATA (remove when auth module is ready) 
     _MOCK_USERS = {
         "admin01": {
             "password": "admin123",
@@ -91,10 +75,7 @@ def _do_login() -> dict | None:
 def _do_logout(user: dict):
     print(f"\n  Logged out. Goodbye, {user['full_name']}!")
 
-
-
 # Admin Menu
-
 
 def _menu_admin(user: dict):
     opts = [
@@ -137,9 +118,7 @@ def _menu_admin(user: dict):
             print("\n  Invalid option!")
             _pause()
 
-
 # Lecturer Menu
-
 
 def _menu_lecturer(user: dict):
     opts = [
@@ -182,9 +161,7 @@ def _menu_lecturer(user: dict):
             print("\n  Invalid option!")
             _pause()
 
-
 # Student Menu
-
 
 def _menu_student(user: dict):
     opts = [
@@ -211,9 +188,7 @@ def _menu_student(user: dict):
             print("\n  Invalid option!")
             _pause()
 
-
 # Role Router
-
 
 _ROLE_HANDLER = {
     "admin": _menu_admin,
@@ -221,10 +196,7 @@ _ROLE_HANDLER = {
     "student": _menu_student,
 }
 
-
-
 # Main Menu Class
-
 
 class Menu:
     MAX_ATTEMPTS = 3
