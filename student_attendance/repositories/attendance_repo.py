@@ -63,10 +63,21 @@ class AttendanceRepo:
         conn = get_connection()
         rows = conn.execute(
             """
-            SELECT attendance_id, session_id, student_id, status, recorded_at
-            FROM attendance
-            WHERE session_id = ?
-            ORDER BY student_id
+            SELECT
+                a.attendance_id,
+                a.session_id,
+                a.student_id,
+                a.status,
+                a.recorded_at,
+                u.full_name AS student_name,
+                c.class_name
+            FROM attendance a
+            JOIN student s ON s.student_id = a.student_id
+            JOIN users u ON u.user_id = s.user_id
+            JOIN session se ON se.session_id = a.session_id
+            JOIN class c ON c.class_id = se.class_id
+            WHERE a.session_id = ?
+            ORDER BY a.student_id
             """,
             (session_id,),
         ).fetchall()
@@ -77,10 +88,21 @@ class AttendanceRepo:
         conn = get_connection()
         rows = conn.execute(
             """
-            SELECT attendance_id, session_id, student_id, status, recorded_at
-            FROM attendance
-            WHERE student_id = ?
-            ORDER BY recorded_at DESC
+            SELECT
+                a.attendance_id,
+                a.session_id,
+                a.student_id,
+                a.status,
+                a.recorded_at,
+                u.full_name AS student_name,
+                c.class_name
+            FROM attendance a
+            JOIN student s ON s.student_id = a.student_id
+            JOIN users u ON u.user_id = s.user_id
+            JOIN session se ON se.session_id = a.session_id
+            JOIN class c ON c.class_id = se.class_id
+            WHERE a.student_id = ?
+            ORDER BY a.recorded_at DESC
             """,
             (student_id,),
         ).fetchall()
@@ -109,4 +131,12 @@ class AttendanceRepo:
     def _to_attendance(self, row):
         if not row:
             return None
-        return Attendance(row["attendance_id"], row["session_id"], row["student_id"], row["status"], row["recorded_at"])
+        return Attendance(
+            attendance_id=row["attendance_id"],
+            session_id=row["session_id"],
+            student_id=row["student_id"],
+            status=row["status"],
+            recorded_at=row["recorded_at"],
+            student_name=row["student_name"] if "student_name" in row.keys() else None,
+            class_name=row["class_name"] if "class_name" in row.keys() else None,
+        )

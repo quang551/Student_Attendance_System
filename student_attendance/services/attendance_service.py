@@ -1,54 +1,53 @@
 from datetime import datetime
-from repositories.attendance_repo import *
+
+from models.attendance import Attendance, AttendanceStatus
+from repositories.attendance_repo import AttendanceRepo
 
 
 class AttendanceService:
-    def __init__(self):
-        pass
+    def __init__(self, attendance_repo=None):
+        self.attendance_repo = attendance_repo or AttendanceRepo()
 
     def open_session(self, session_id):
-        update_session_status(session_id, "1")
+        if not self.attendance_repo.get_session(session_id):
+            return False, "Session not found!"
+        self.attendance_repo.update_session_status(session_id, True)
+        return True, "Session opened!"
 
     def close_session(self, session_id):
-        update_session_status(session_id, "0")
+        if not self.attendance_repo.get_session(session_id):
+            return False, "Session not found!"
+        self.attendance_repo.update_session_status(session_id, False)
+        return True, "Session closed!"
 
     def is_session_open(self, session_id):
-        session = get_session(session_id)
-        if session:
-            return session[4] == "1"   # is_open
-        return False
+        session = self.attendance_repo.get_session(session_id)
+        return bool(session and session["is_open"])
 
     def mark_attendance(self, attendance_id, session_id, student_id, status):
-        # ❗ 1. check session mở
+        if int(status) not in {int(item) for item in AttendanceStatus}:
+            return False, "Invalid attendance status"
         if not self.is_session_open(session_id):
-            print("❌ Session chưa mở")
-            return
+            return False, "Session is not open"
 
-        # ❗ 2. lấy class_id từ session
-        class_id = get_class_id_by_session(session_id)
-
+        class_id = self.attendance_repo.get_class_id_by_session(session_id)
         if not class_id:
-            print("❌ Session không tồn tại")
-            return
+            return False, "Session not found"
+        if not self.attendance_repo.is_student_in_class(student_id, class_id):
+            return False, "Student is not enrolled in this class"
 
-        # ❗ 3. check student có trong class không
-        if not is_student_in_class(student_id, class_id):
-            print("❌ Student không thuộc lớp này")
-            return
-
-        # ❗ 4. xử lý điểm danh
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        existing = get_attendance(session_id, student_id)
-
+        existing = self.attendance_repo.get_attendance(session_id, student_id)
         if existing:
-            update_attendance(session_id, student_id, status, now)
-        else:
-            insert_attendance(attendance_id, session_id, student_id, status, now)
+            self.attendance_repo.update_attendance(session_id, student_id, status, now)
+            return True, "Attendance updated"
+
+        attendance = Attendance(attendance_id, session_id, student_id, int(status), now)
+        self.attendance_repo.insert_attendance(attendance)
+        return True, "Attendance recorded"
 
     def view_attendance_by_session(self, session_id):
-        return get_attendance_by_session(session_id)
+        return self.attendance_repo.get_attendance_by_session(session_id)
 
-
-def view_attendance_by_student(student_id):
-    return get_attendance_by_student(student_id)
+    def view_attendance_by_student(self, student_id):
+        return self.attendance_repo.get_attendance_by_student(student_id)

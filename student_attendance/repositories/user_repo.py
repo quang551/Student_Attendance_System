@@ -137,11 +137,23 @@ class UserRepo:
         conn.close()
         return self._to_user(row, role_id)
 
+    def _get_role_id_by_user_id(self, role, user_id):
+        table, pk, _ = self.ROLE_TABLE[role]
+        conn = get_connection()
+        row = conn.execute(
+            f"SELECT {pk} FROM {table} WHERE user_id = ?",
+            (user_id,),
+        ).fetchone()
+        conn.close()
+        return row[pk] if row else None
+
     def _to_user(self, row, role_id=None):
         if not row:
             return None
 
         role = row["role"]
+        resolved_role_id = role_id or self._get_role_id_by_user_id(role, row["user_id"])
+
         kwargs = {
             "user_id": row["user_id"],
             "username": row["user_name"],
@@ -150,12 +162,13 @@ class UserRepo:
             "role": role,
             "password": row["password"],
         }
+
         if role == "admin":
-            return Admin(admin_id=role_id or f"A_{row['user_id']}", **kwargs)
+            return Admin(admin_id=resolved_role_id, **kwargs)
         if role == "lecturer":
-            return Lecturer(lecturer_id=role_id or f"L_{row['user_id']}", **kwargs)
+            return Lecturer(lecturer_id=resolved_role_id, **kwargs)
         if role == "student":
-            return Student(student_id=role_id or f"S_{row['user_id']}", **kwargs)
+            return Student(student_id=resolved_role_id, **kwargs)
         return User(**kwargs)
 
     def _upsert_role_table(self, cursor, user_id, role, role_id=None):

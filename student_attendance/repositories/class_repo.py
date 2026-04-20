@@ -20,9 +20,18 @@ class ClassRepo:
         conn = get_connection()
         rows = conn.execute(
             """
-            SELECT class_id, class_name, course_id, lecturer_id
-            FROM class
-            ORDER BY class_id
+            SELECT
+                c.class_id,
+                c.class_name,
+                c.course_id,
+                c.lecturer_id,
+                co.course_name,
+                u.full_name AS lecturer_name
+            FROM class c
+            JOIN course co ON co.course_id = c.course_id
+            LEFT JOIN lecturer l ON l.lecturer_id = c.lecturer_id
+            LEFT JOIN users u ON u.user_id = l.user_id
+            ORDER BY c.class_id
             """
         ).fetchall()
         conn.close()
@@ -32,9 +41,18 @@ class ClassRepo:
         conn = get_connection()
         row = conn.execute(
             """
-            SELECT class_id, class_name, course_id, lecturer_id
-            FROM class
-            WHERE class_id = ?
+            SELECT
+                c.class_id,
+                c.class_name,
+                c.course_id,
+                c.lecturer_id,
+                co.course_name,
+                u.full_name AS lecturer_name
+            FROM class c
+            JOIN course co ON co.course_id = c.course_id
+            LEFT JOIN lecturer l ON l.lecturer_id = c.lecturer_id
+            LEFT JOIN users u ON u.user_id = l.user_id
+            WHERE c.class_id = ?
             """,
             (class_id,),
         ).fetchone()
@@ -77,10 +95,19 @@ class ClassRepo:
         conn = get_connection()
         rows = conn.execute(
             """
-            SELECT class_id, class_name, course_id, lecturer_id
-            FROM class
-            WHERE lecturer_id = ?
-            ORDER BY class_id
+            SELECT
+                c.class_id,
+                c.class_name,
+                c.course_id,
+                c.lecturer_id,
+                co.course_name,
+                u.full_name AS lecturer_name
+            FROM class c
+            JOIN course co ON co.course_id = c.course_id
+            LEFT JOIN lecturer l ON l.lecturer_id = c.lecturer_id
+            LEFT JOIN users u ON u.user_id = l.user_id
+            WHERE c.lecturer_id = ?
+            ORDER BY c.class_id
             """,
             (lecturer_id,),
         ).fetchall()
@@ -91,9 +118,18 @@ class ClassRepo:
         conn = get_connection()
         rows = conn.execute(
             """
-            SELECT c.class_id, c.class_name, c.course_id, c.lecturer_id
+            SELECT
+                c.class_id,
+                c.class_name,
+                c.course_id,
+                c.lecturer_id,
+                co.course_name,
+                u.full_name AS lecturer_name
             FROM class c
             JOIN class_student cs ON cs.class_id = c.class_id
+            JOIN course co ON co.course_id = c.course_id
+            LEFT JOIN lecturer l ON l.lecturer_id = c.lecturer_id
+            LEFT JOIN users u ON u.user_id = l.user_id
             WHERE cs.student_id = ?
             ORDER BY c.class_id
             """,
@@ -158,4 +194,11 @@ class ClassRepo:
     def _to_class(self, row):
         if not row:
             return None
-        return Class(row["class_id"], row["class_name"], row["course_id"], row["lecturer_id"])
+        return Class(
+            class_id=row["class_id"],
+            class_name=row["class_name"],
+            course_id=row["course_id"],
+            lecturer_id=row["lecturer_id"],
+            course_name=row["course_name"],
+            lecturer_name=row["lecturer_name"],
+        )
