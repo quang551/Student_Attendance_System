@@ -1,62 +1,26 @@
-
-import hashlib
-import getpass
-
-# UI Helpers
-
-def _header(title: str):
-    print("\n" + "=" * 52)
-    print(f"   {title}")
-    print("=" * 52)
-
-
-def _inp(prompt: str) -> str:
-    return input(f"  {prompt}").strip()
-
-
-def _pause():
-    input("\n  Press Enter to continue...")
-
-
-def _opts(options: list[tuple[str, str]]):
-    print()
-    for key, label in options:
-        print(f"  [{key}] {label}")
-    print()
-
-
-# Security – Password Hashing
-
-def hash_password(password: str) -> str:
-    """Hash password using SHA-256"""
-    return hashlib.sha256(password.encode("utf-8")).hexdigest()
-
-# Authentication
-
 def _do_login() -> dict | None:
-    _header("LOGIN – Student Attendance System")
+    _header("ĐĂNG NHẬP – Hệ thống điểm danh sinh viên")
 
-    username = _inp("Username: ")
-    password = getpass.getpass("  Password: ")
+    username = _inp("Tên đăng nhập: ")
+    password = getpass.getpass("  Mật khẩu: ")
 
-    # MOCK DATA (remove when auth module is ready) 
     _MOCK_USERS = {
         "admin01": {
             "password": "admin123",
             "role": "admin",
-            "full_name": "Administrator",
+            "full_name": "Quản trị viên",
             "user_id": "U001",
         },
         "lec01": {
             "password": "lecturer123",
             "role": "lecturer",
-            "full_name": "Nguyen Thanh Tung",
+            "full_name": "Nguyễn Thanh Tùng",
             "user_id": "U002",
         },
         "stu01": {
             "password": "student123",
             "role": "student",
-            "full_name": "Nguyen Van An",
+            "full_name": "Nguyễn Văn An",
             "user_id": "U003",
         },
     }
@@ -64,139 +28,103 @@ def _do_login() -> dict | None:
     info = _MOCK_USERS.get(username)
 
     if info and info["password"] == password:
-        print("\n  ✓ Login successful!")
-        print(f"  Welcome, {info['full_name']} ({info['role']})")
+        print("\n  ✓ Đăng nhập thành công!")
+        print(f"  Xin chào, {info['full_name']} ({info['role']})")
         return {k: v for k, v in info.items() if k != "password"}
 
-    print("\n  ✗ Invalid username or password.")
+    print("\n  ✗ Sai tên đăng nhập hoặc mật khẩu.")
     return None
 
 
 def _do_logout(user: dict):
-    print(f"\n  Logged out. Goodbye, {user['full_name']}!")
+    print(f"\n  Đã đăng xuất. Tạm biệt, {user['full_name']}!")
 
-# Admin Menu
 
 def _menu_admin(user: dict):
     opts = [
-        ("1", "Manage Users"),
-        ("2", "Manage Courses & Classes"),
-        ("3", "Manage Sessions"),
-        ("4", "Assign Lecturer to Class"),
-        ("5", "Enroll Students"),
-        ("6", "View Reports"),
-        ("0", "Logout"),
+        ("1", "Quản lý người dùng"),
+        ("2", "Quản lý khóa học & lớp học"),
+        ("3", "Quản lý buổi học"),
+        ("4", "Phân công giảng viên"),
+        ("5", "Ghi danh sinh viên"),
+        ("6", "Xem báo cáo"),
+        ("0", "Đăng xuất"),
     ]
 
     while True:
-        _header(f"ADMIN – {user['full_name']}")
+        _header(f"QUẢN TRỊ – {user['full_name']}")
         _opts(opts)
-        choice = _inp("Select option: ")
+        choice = _inp("Chọn chức năng: ")
 
         if choice == "1":
-            print("\n  → User management not ready.")
+            print("\n  → Chức năng chưa sẵn sàng.")
             _pause()
         elif choice == "2":
-            print("\n  → Class management not ready.")
+            print("\n  → Chức năng chưa sẵn sàng.")
             _pause()
         elif choice == "3":
-            print("\n  → Session management not ready.")
+            print("\n  → Chức năng chưa sẵn sàng.")
             _pause()
         elif choice == "4":
-            print("\n  → Assign lecturer not ready.")
+            print("\n  → Chức năng chưa sẵn sàng.")
             _pause()
         elif choice == "5":
-            print("\n  → Enroll students not ready.")
+            print("\n  → Chức năng chưa sẵn sàng.")
             _pause()
         elif choice == "6":
-            print("\n  → Reports not ready.")
+            print("\n  → Chức năng chưa sẵn sàng.")
             _pause()
         elif choice == "0":
             _do_logout(user)
             break
         else:
-            print("\n  Invalid option!")
+            print("\n  Lựa chọn không hợp lệ!")
             _pause()
 
-# Lecturer Menu
 
 def _menu_lecturer(user: dict):
     opts = [
-        ("1", "View Courses & Classes"),
-        ("2", "View Student List"),
-        ("3", "View Sessions"),
-        ("4", "Take Attendance"),
-        ("5", "Edit Attendance"),
-        ("6", "View Reports"),
-        ("0", "Logout"),
+        ("1", "Xem khóa học & lớp học"),
+        ("2", "Xem danh sách sinh viên"),
+        ("3", "Xem buổi học"),
+        ("4", "Điểm danh"),
+        ("5", "Chỉnh sửa điểm danh"),
+        ("6", "Xem báo cáo"),
+        ("0", "Đăng xuất"),
     ]
 
     while True:
-        _header(f"LECTURER – {user['full_name']}")
+        _header(f"GIẢNG VIÊN – {user['full_name']}")
         _opts(opts)
-        choice = _inp("Select option: ")
+        choice = _inp("Chọn chức năng: ")
 
-        if choice == "1":
-            print("\n  → Not ready.")
-            _pause()
-        elif choice == "2":
-            print("\n  → Not ready.")
-            _pause()
-        elif choice == "3":
-            print("\n  → Not ready.")
-            _pause()
-        elif choice == "4":
-            print("\n  → Not ready.")
-            _pause()
-        elif choice == "5":
-            print("\n  → Not ready.")
-            _pause()
-        elif choice == "6":
-            print("\n  → Not ready.")
-            _pause()
-        elif choice == "0":
+        if choice == "0":
             _do_logout(user)
             break
         else:
-            print("\n  Invalid option!")
+            print("\n  → Chức năng chưa sẵn sàng.")
             _pause()
 
-# Student Menu
 
 def _menu_student(user: dict):
     opts = [
-        ("1", "View My Classes"),
-        ("2", "View My Attendance"),
-        ("0", "Logout"),
+        ("1", "Xem lớp học của tôi"),
+        ("2", "Xem điểm danh của tôi"),
+        ("0", "Đăng xuất"),
     ]
 
     while True:
-        _header(f"STUDENT – {user['full_name']}")
+        _header(f"SINH VIÊN – {user['full_name']}")
         _opts(opts)
-        choice = _inp("Select option: ")
+        choice = _inp("Chọn chức năng: ")
 
-        if choice == "1":
-            print("\n  → Not ready.")
-            _pause()
-        elif choice == "2":
-            print("\n  → Not ready.")
-            _pause()
-        elif choice == "0":
+        if choice == "0":
             _do_logout(user)
             break
         else:
-            print("\n  Invalid option!")
+            print("\n  → Chức năng chưa sẵn sàng.")
             _pause()
 
-# Role Router
-
-_ROLE_HANDLER = {
-    "admin": _menu_admin,
-    "lecturer": _menu_lecturer,
-    "student": _menu_student,
-}
-
-# Main Menu Class
 
 class Menu:
     MAX_ATTEMPTS = 3
@@ -205,7 +133,7 @@ class Menu:
         while True:
             user = self._login_loop()
             if user is None:
-                print("\n  Goodbye!\n")
+                print("\n  Tạm biệt!\n")
                 break
 
             role = user.get("role", "").lower()
@@ -214,11 +142,11 @@ class Menu:
             if handler:
                 handler(user)
             else:
-                print(f"\n  ERROR: Unsupported role '{role}'")
+                print(f"\n  LỖI: Vai trò không hỗ trợ '{role}'")
 
-            again = _inp("\nLogin again? (y/n): ").lower()
+            again = _inp("\nĐăng nhập lại? (y/n): ").lower()
             if again != "y":
-                print("\n  Goodbye!\n")
+                print("\n  Tạm biệt!\n")
                 break
 
     def _login_loop(self) -> dict | None:
@@ -229,8 +157,8 @@ class Menu:
 
             remaining = self.MAX_ATTEMPTS - attempt
             if remaining > 0:
-                print(f"\n  Attempts remaining: {remaining}")
+                print(f"\n  Số lần thử còn lại: {remaining}")
             else:
-                print("\n  Too many failed attempts.")
+                print("\n  Quá số lần đăng nhập cho phép.")
 
         return None
