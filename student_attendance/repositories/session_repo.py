@@ -61,6 +61,21 @@ class SessionRepo:
         conn.close()
         return [self._to_session(row) for row in rows]
 
+    def list_by_lecturer(self, lecturer_id):
+        conn = get_connection()
+        rows = conn.execute(
+            """
+            SELECT s.session_id, s.class_id, s.start_time, s.end_time, s.is_open
+            FROM session s
+            JOIN class c ON c.class_id = s.class_id
+            WHERE c.lecturer_id = ?
+            ORDER BY s.session_id
+            """,
+            (lecturer_id,),
+        ).fetchall()
+        conn.close()
+        return [self._to_session(row) for row in rows]
+
     def delete(self, session_id):
         conn = get_connection()
         cursor = conn.cursor()

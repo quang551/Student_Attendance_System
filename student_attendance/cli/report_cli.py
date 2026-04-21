@@ -12,13 +12,10 @@ def _print_classes(class_service):
         print(item)
 
 
-def _print_students(user_service, actor):
-    if not user_service or not actor:
-        return
-
-    ok, _, students = user_service.list_users(actor, role="student")
+def _print_students(service):
+    students = service.list_students_for_report()
     print("\n===== STUDENT LIST =====")
-    if not ok or not students:
+    if not students:
         print("No students found.")
         return
 
@@ -45,7 +42,7 @@ def report_menu(service, class_service=None, user_service=None, actor=None):
                 _print_report(report)
 
         elif choice == "2":
-            _print_students(user_service, actor)
+            _print_students(service)
             student_id = input("Enter student_id: ").strip()
             ok, message, report = service.report_by_student(student_id)
             if not ok:

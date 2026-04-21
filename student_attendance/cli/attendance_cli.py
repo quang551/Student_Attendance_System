@@ -3,15 +3,20 @@ def _print_result(success, message):
     print(f"{prefix} {message}")
 
 
-def _print_sessions(session_service):
+def _print_sessions(session_service, role=None, user=None):
     if not session_service:
-        return
+        return []
 
-    sessions = session_service.list_sessions()
+    if role == "lecturer" and user:
+        lecturer_id = getattr(user, "lecturer_id", None)
+        sessions = session_service.list_sessions_for_lecturer(lecturer_id)
+    else:
+        sessions = session_service.list_sessions()
+
     print("\n===== SESSION LIST =====")
     if not sessions:
         print("No sessions found.")
-        return
+        return []
 
     print("Session ID | Class ID | Start Time | End Time | Status")
     for session in sessions:
@@ -23,6 +28,45 @@ def _print_sessions(session_service):
             f"{session.end_time or '-'} | "
             f"{status}"
         )
+    return sessions
+
+
+def _print_classes(class_service, role=None, user=None):
+    if not class_service:
+        return []
+
+    if role == "lecturer" and user:
+        lecturer_id = getattr(user, "lecturer_id", None)
+        classes = class_service.list_classes_for_lecturer(lecturer_id)
+    else:
+        classes = class_service.list_classes()
+
+    print("\n===== CLASS LIST =====")
+    if not classes:
+        print("No classes found.")
+        return []
+
+    for item in classes:
+        print(item)
+    return classes
+
+
+def _can_access_class(class_service, class_id, role=None, user=None):
+    if role != "lecturer" or not user:
+        return True
+
+    lecturer_id = getattr(user, "lecturer_id", None)
+    classes = class_service.list_classes_for_lecturer(lecturer_id)
+    return any(item.class_id == class_id for item in classes)
+
+
+def _can_access_session(session_service, session_id, role=None, user=None):
+    if role != "lecturer" or not user:
+        return True
+
+    lecturer_id = getattr(user, "lecturer_id", None)
+    sessions = session_service.list_sessions_for_lecturer(lecturer_id)
+    return any(session.session_id == session_id for session in sessions)
 
 
 def _print_students_of_session(attendance_service, class_service, session_id):
@@ -52,13 +96,13 @@ def _print_students_of_session(attendance_service, class_service, session_id):
     return True
 
 
-def _manage_attendance_session(attendance_service, session_service):
+def _manage_attendance_session(attendance_service, session_service, class_service=None, role=None, user=None):
     if not session_service:
         print("❌ Session management is not available in this menu.")
         return
 
     while True:
-        _print_sessions(session_service)
+        _print_sessions(session_service, role=role, user=user)
 
         print("\n===== ATTENDANCE SESSION MANAGEMENT =====")
         print("1. Create session")
@@ -69,17 +113,33 @@ def _manage_attendance_session(attendance_service, session_service):
         choice = input("Choose: ").strip()
 
         if choice == "1":
+            _print_classes(class_service, role=role, user=user)
             session_id = input("Session ID: ").strip()
             class_id = input("Class ID: ").strip()
+
+            if not _can_access_class(class_service, class_id, role, user):
+                print("❌ You can only create sessions for your assigned classes.")
+                continue
+
             result = session_service.create_session(session_id, class_id)
             _print_result(result[0], result[1])
 
         elif choice == "2":
             session_id = input("Session ID: ").strip()
+
+            if not _can_access_session(session_service, session_id, role, user):
+                print("❌ You can only manage sessions of your assigned classes.")
+                continue
+
             _print_result(*attendance_service.open_session(session_id))
 
         elif choice == "3":
             session_id = input("Session ID: ").strip()
+
+            if not _can_access_session(session_service, session_id, role, user):
+                print("❌ You can only manage sessions of your assigned classes.")
+                continue
+
             _print_result(*attendance_service.close_session(session_id))
 
         elif choice == "0":
@@ -89,17 +149,23 @@ def _manage_attendance_session(attendance_service, session_service):
             print("Invalid choice.")
 
 
-def _take_attendance(attendance_service, session_service, class_service):
-    _print_sessions(session_service)
+def _take_attendance(attendance_service, session_service, class_service, role=None, user=None):
+    _print_sessions(session_service, role=role, user=user)
 
     session_id = input("Session ID: ").strip()
+
+    if not _can_access_session(session_service, session_id, role, user):
+        print("❌ You can only take attendance for sessions of your assigned classes.")
+        return
 
     if not attendance_service.is_session_open(session_id):
         print("❌ Session is not open or does not exist.")
         return
 
     if class_service:
-        _print_students_of_session(attendance_service, class_service, session_id)
+        ok = _print_students_of_session(attendance_service, class_service, session_id)
+        if not ok:
+            return
 
     while True:
         print("\n1. Take attendance")
@@ -132,13 +198,19 @@ def _take_attendance(attendance_service, session_service, class_service):
             print("Invalid choice.")
 
 
-def _edit_attendance(attendance_service, session_service, class_service):
-    _print_sessions(session_service)
+def _edit_attendance(attendance_service, session_service, class_service, role=None, user=None):
+    _print_sessions(session_service, role=role, user=user)
 
     session_id = input("Session ID: ").strip()
 
+    if not _can_access_session(session_service, session_id, role, user):
+        print("❌ You can only edit attendance for sessions of your assigned classes.")
+        return
+
     if class_service:
-        _print_students_of_session(attendance_service, class_service, session_id)
+        ok = _print_students_of_session(attendance_service, class_service, session_id)
+        if not ok:
+            return
 
     print("\n===== CURRENT ATTENDANCE RECORDS =====")
     data = attendance_service.view_attendance_by_session(session_id)
@@ -185,7 +257,7 @@ def attendance_menu(attendance_service, session_service=None, class_service=None
         return
 
     while True:
-        _print_sessions(session_service)
+        _print_sessions(session_service, role=role, user=user)
 
         print("\n===== ATTENDANCE MENU =====")
         print("1. Manage attendance sessions")
@@ -198,17 +270,40 @@ def attendance_menu(attendance_service, session_service=None, class_service=None
         choice = input("Choose: ").strip()
 
         if choice == "1":
-            _manage_attendance_session(attendance_service, session_service)
+            _manage_attendance_session(
+                attendance_service,
+                session_service,
+                class_service,
+                role=role,
+                user=user,
+            )
 
         elif choice == "2":
-            _take_attendance(attendance_service, session_service, class_service)
+            _take_attendance(
+                attendance_service,
+                session_service,
+                class_service,
+                role=role,
+                user=user,
+            )
 
         elif choice == "3":
-            _edit_attendance(attendance_service, session_service, class_service)
+            _edit_attendance(
+                attendance_service,
+                session_service,
+                class_service,
+                role=role,
+                user=user,
+            )
 
         elif choice == "4":
-            _print_sessions(session_service)
+            _print_sessions(session_service, role=role, user=user)
             session_id = input("Session ID: ").strip()
+
+            if not _can_access_session(session_service, session_id, role, user):
+                print("❌ You can only view attendance for sessions of your assigned classes.")
+                continue
+
             data = attendance_service.view_attendance_by_session(session_id)
             if not data:
                 print("No attendance data found.")

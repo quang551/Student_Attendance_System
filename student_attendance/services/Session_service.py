@@ -46,3 +46,6 @@ class SessionService:
 
     def list_sessions_for_class(self, class_id):
         return self.session_repo.list_by_class(class_id)
+
+    def list_sessions_for_lecturer(self, lecturer_id):
+        return self.session_repo.list_by_lecturer(lecturer_id)

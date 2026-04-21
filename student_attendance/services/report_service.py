@@ -8,6 +8,9 @@ class ReportService:
         self.class_repo = class_repo or ClassRepo()
         self.user_repo = user_repo or UserRepo()
 
+    def list_students_for_report(self):
+        return self.user_repo.list_all("student")
+
     def report_by_class(self, class_id):
         current_class = self.class_repo.find_by_id(class_id)
         if not current_class:
