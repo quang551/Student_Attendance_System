@@ -1,3 +1,5 @@
+import sqlite3
+
 from models.class_model import Class
 from repositories.class_repo import ClassRepo
 from repositories.user_repo import UserRepo
@@ -19,10 +21,27 @@ class ClassService:
         return True, "Class created successfully!", self.class_repo.add(new_class)
 
     def delete_class(self, class_id):
-        if not self.class_repo.find_by_id(class_id):
+        current = self.class_repo.find_by_id(class_id)
+        if not current:
             return False, "Class not found!"
-        self.class_repo.delete(class_id)
-        return True, "Class deleted!"
+
+        students = self.class_repo.list_students(class_id)
+        sessions = self.class_repo.list_sessions(class_id)
+
+        problems = []
+        if students:
+            problems.append(f"{len(students)} student(s)")
+        if sessions:
+            problems.append(f"{len(sessions)} session(s)")
+
+        if problems:
+            return False, f"Cannot delete class because it still has: {', '.join(problems)}."
+
+        try:
+            self.class_repo.delete(class_id)
+            return True, "Class deleted!"
+        except sqlite3.IntegrityError:
+            return False, "Cannot delete class because it is still referenced by other data."
 
     def update_class(self, class_id, course_id=None, class_name=None):
         current = self.class_repo.find_by_id(class_id)

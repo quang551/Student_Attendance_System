@@ -1,3 +1,5 @@
+import sqlite3
+
 from models.course import Course
 from repositories.Course_repo import CourseRepo
 
@@ -14,9 +16,23 @@ class CourseService:
         return True, "Course created successfully!", self.course_repo.add(course)
 
     def delete_course(self, course_id):
-        if self.course_repo.delete(course_id):
-            return True, "Course deleted!"
-        return False, "Course not found!"
+        course = self.course_repo.find_by_id(course_id)
+        if not course:
+            return False, "Course not found!"
+
+        linked_classes = self.course_repo.get_classes_using_course(course_id)
+        if linked_classes:
+            class_list = ", ".join(
+                f"{row['class_id']} ({row['class_name']})" for row in linked_classes
+            )
+            return False, f"Cannot delete course because it is assigned to classes: {class_list}"
+
+        try:
+            if self.course_repo.delete(course_id):
+                return True, "Course deleted!"
+            return False, "Course not found!"
+        except sqlite3.IntegrityError:
+            return False, "Cannot delete course because it is assigned to one or more classes."
 
     def update_course(self, course_id, name=None, description=None):
         if self.course_repo.update(course_id, name, description):

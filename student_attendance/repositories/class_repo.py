@@ -10,7 +10,12 @@ class ClassRepo:
             INSERT INTO class (class_id, class_name, course_id, lecturer_id)
             VALUES (?, ?, ?, ?)
             """,
-            (new_class.class_id, new_class.class_name, new_class.course_id, new_class.lecturer_id),
+            (
+                new_class.class_id,
+                new_class.class_name,
+                new_class.course_id,
+                new_class.lecturer_id,
+            ),
         )
         conn.commit()
         conn.close()
@@ -148,6 +153,20 @@ class ClassRepo:
             JOIN users u ON u.user_id = s.user_id
             WHERE cs.class_id = ?
             ORDER BY s.student_id
+            """,
+            (class_id,),
+        ).fetchall()
+        conn.close()
+        return rows
+
+    def list_sessions(self, class_id):
+        conn = get_connection()
+        rows = conn.execute(
+            """
+            SELECT session_id, class_id, start_time, end_time, is_open
+            FROM session
+            WHERE class_id = ?
+            ORDER BY session_id
             """,
             (class_id,),
         ).fetchall()

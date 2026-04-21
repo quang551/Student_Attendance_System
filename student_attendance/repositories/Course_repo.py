@@ -41,6 +41,20 @@ class CourseRepo:
         conn.close()
         return self._to_course(row)
 
+    def get_classes_using_course(self, course_id):
+        conn = get_connection()
+        rows = conn.execute(
+            """
+            SELECT class_id, class_name
+            FROM class
+            WHERE course_id = ?
+            ORDER BY class_id
+            """,
+            (course_id,),
+        ).fetchall()
+        conn.close()
+        return rows
+
     def delete(self, course_id):
         conn = get_connection()
         cursor = conn.cursor()
@@ -62,7 +76,11 @@ class CourseRepo:
             SET course_name = ?, description = ?
             WHERE course_id = ?
             """,
-            (new_name if new_name is not None else current.name, new_description if new_description is not None else current.description, course_id),
+            (
+                new_name if new_name is not None else current.name,
+                new_description if new_description is not None else current.description,
+                course_id,
+            ),
         )
         conn.commit()
         conn.close()

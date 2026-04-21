@@ -292,6 +292,15 @@ def _enroll_student(class_service, user_service, actor):
     _print_result(class_service.add_student(class_id, student_id))
 
 
+def _show_reports(user, services):
+    report_menu(
+        services["report_service"],
+        class_service=services["class_service"],
+        user_service=services["user_service"],
+        actor=user,
+    )
+
+
 def _menu_admin(user, services):
     while True:
         _header(f"ADMIN - {user.full_name}")
@@ -334,7 +343,7 @@ def _menu_admin(user, services):
             _pause()
 
         elif choice == "7":
-            report_menu(services["report_service"])
+            _show_reports(user, services)
 
         elif choice == "0":
             _do_logout(user)
@@ -400,7 +409,7 @@ def _menu_lecturer(user, services):
             )
 
         elif choice == "5":
-            report_menu(services["report_service"])
+            _show_reports(user, services)
 
         elif choice == "0":
             _do_logout(user)
@@ -458,4 +467,8 @@ def show_menu(user, services):
     if not handler:
         print(f"Error: unsupported role '{user.role}'")
         return
-    handler(user, services)
+
+    try:
+        handler(user, services)
+    except Exception as e:
+        print(f"❌ Unexpected error: {e}")
