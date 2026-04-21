@@ -38,11 +38,21 @@ def report_menu(service, class_service=None, user_service=None, actor=None):
         if choice == "1":
             _print_classes(class_service)
             class_id = input("Enter class_id: ").strip()
-            _print_report(service.report_by_class(class_id))
+            ok, message, report = service.report_by_class(class_id)
+            if not ok:
+                print(f"❌ {message}")
+            else:
+                _print_report(report)
+
         elif choice == "2":
             _print_students(user_service, actor)
             student_id = input("Enter student_id: ").strip()
-            _print_report(service.report_by_student(student_id))
+            ok, message, report = service.report_by_student(student_id)
+            if not ok:
+                print(f"❌ {message}")
+            else:
+                _print_report(report)
+
         elif choice == "0":
             break
         else:

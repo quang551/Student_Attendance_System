@@ -28,7 +28,7 @@ def _print_sessions(session_service):
 def _print_students_of_session(attendance_service, class_service, session_id):
     class_id = attendance_service.get_class_id_by_session(session_id)
     if not class_id:
-        print("❌ Class not found for this session.")
+        print("❌ Session is not open or does not exist.")
         return False
 
     ok, message, students = class_service.list_students(class_id)
