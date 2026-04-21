@@ -8,8 +8,8 @@ def login_cli():
 
     user = login(username, password)
     if user:
-        print(f"✔ Login thành công ({user.role})")
+        print(f"✔ Login succesfully ({user.role})")
         return user
 
-    print("❌ Sai tài khoản")
+    print("❌ Invalid username or password")
     return None

@@ -1,25 +1,25 @@
 def course_menu(service):
     while True:
         print("\n--- COURSE MENU ---")
-        print("1. Thêm khóa học")
-        print("2. Sửa khóa học")
-        print("3. Xóa khóa học")
-        print("4. Xem danh sách")
-        print("0. Quay lại")
+        print("1. Add course")
+        print("2. Update course")
+        print("3. Delete course")
+        print("4. View courses")
+        print("0. Back")
 
-        choice = input("Chọn: ")
+        choice = input("Choose: ")
 
         if choice == "1":
             cid = input("ID: ")
-            name = input("Tên: ")
-            desc = input("Mô tả: ")
+            name = input("Name: ")
+            desc = input("Description: ")
 
             service.create_course(cid, name, desc)
 
         elif choice == "2":
             cid = input("ID: ")
-            name = input("Tên mới: ")
-            desc = input("Mô tả mới: ")
+            name = input("New name: ")
+            desc = input("New description: ")
 
             service.update_course(cid, name, desc)
 

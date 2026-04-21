@@ -10,7 +10,13 @@ class SessionRepo:
             INSERT INTO session (session_id, class_id, start_time, end_time, is_open)
             VALUES (?, ?, ?, ?, ?)
             """,
-            (session.session_id, session.class_id, session.start_time, session.end_time, int(session.is_open)),
+            (
+                session.session_id,
+                session.class_id,
+                session.start_time,
+                session.end_time,
+                int(session.is_open),
+            ),
         )
         conn.commit()
         conn.close()
@@ -22,7 +28,7 @@ class SessionRepo:
             """
             SELECT session_id, class_id, start_time, end_time, is_open
             FROM session
-            ORDER BY start_time
+            ORDER BY session_id
             """
         ).fetchall()
         conn.close()
@@ -48,7 +54,7 @@ class SessionRepo:
             SELECT session_id, class_id, start_time, end_time, is_open
             FROM session
             WHERE class_id = ?
-            ORDER BY start_time
+            ORDER BY session_id
             """,
             (class_id,),
         ).fetchall()
@@ -64,7 +70,7 @@ class SessionRepo:
         conn.close()
         return deleted
 
-    def update(self, session_id, start_time=None, end_time=None, is_open=None):
+    def update(self, session_id, class_id=None, start_time=None, end_time=None, is_open=None):
         current = self.find_by_id(session_id)
         if not current:
             return False
@@ -73,10 +79,11 @@ class SessionRepo:
         conn.execute(
             """
             UPDATE session
-            SET start_time = ?, end_time = ?, is_open = ?
+            SET class_id = ?, start_time = ?, end_time = ?, is_open = ?
             WHERE session_id = ?
             """,
             (
+                class_id if class_id is not None else current.class_id,
                 start_time if start_time is not None else current.start_time,
                 end_time if end_time is not None else current.end_time,
                 int(is_open) if is_open is not None else int(current.is_open),
@@ -90,4 +97,17 @@ class SessionRepo:
     def _to_session(self, row):
         if not row:
             return None
-        return Session(row["session_id"], row["class_id"], row["start_time"], row["end_time"], bool(row["is_open"]))
+
+        raw_is_open = row["is_open"]
+        try:
+            is_open = bool(int(raw_is_open))
+        except (TypeError, ValueError):
+            is_open = False
+
+        return Session(
+            row["session_id"],
+            row["class_id"],
+            row["start_time"],
+            row["end_time"],
+            is_open,
+        )
