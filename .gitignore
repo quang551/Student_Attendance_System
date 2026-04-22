@@ -1,0 +1,8 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/.vs/Student_Attendance_System/v17
+/.vs
+/student_attendance/services/Sessions_service.py
+/student_attendance/services/Sessions_service.py
